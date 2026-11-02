@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>컬처링크 | 문화공간 프로젝트 커뮤니티</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--navy:#4b3428;--blue:#8b5e3c;--bg:#f7f3ef;--line:#e7ddd4;--muted:#7b6b60;--ink:#302720}
@@ -284,13 +284,14 @@ footer{max-width:1200px;margin:auto;padding:10px 16px 30px;color:var(--muted);fo
 
 </main>
 
-<footer>컬처링크 프로토타입 · 시설 데이터: 2025 전국 문화기반시설 총람(사용자 제공 원본) · 지도: OpenStreetMap</footer>
+<footer>컬처링크 프로토타입 · 시설 데이터: 2025 전국 문화기반시설 총람(사용자 제공 원본) · 지도: Kakao Maps</footer>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=fcb06d0d7237da1bb4d73d19c281af78&libraries=services"></script>
 <script>
 const $=id=>document.getElementById(id);
 const DB_NAME='CultureLinkV3',DB_VERSION=1;
-let db,FACILITIES=[],map,markerLayer;
+let db,FACILITIES=[],map,markerLayer=[];
 
 const PROVINCES=[
 '서울특별시','부산광역시','대구광역시','인천광역시',
@@ -341,7 +342,7 @@ function showView(id){
  if(id==='directory')renderInvestors();
  if(id==='mapview'){
   if(!map)initMap();
-  setTimeout(()=>map.invalidateSize(),100);
+  setTimeout(()=>{if(map)map.relayout();},100);
  }
 }
 
@@ -838,11 +839,15 @@ function resetFilters(){
 }
 
 function initMap(){
- map=L.map('map').setView([36.3,127.8],7);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  attribution:'© OpenStreetMap'
- }).addTo(map);
- markerLayer=L.layerGroup().addTo(map);
+ if(!window.kakao||!kakao.maps){
+  $('mapMsg').textContent='카카오맵을 불러오지 못했습니다. Kakao Developers에서 웹 플랫폼 도메인을 등록했는지 확인해 주세요.';
+  return;
+ }
+ map=new kakao.maps.Map($('map'),{
+  center:new kakao.maps.LatLng(36.3,127.8),
+  level:12
+ });
+ markerLayer=[];
 }
 
 function norm(v){
@@ -932,44 +937,33 @@ async function loadWorkbook(){
  }
 }
 
-async function geocode(a){
- let k='cl_geo_'+a;
- let s=localStorage.getItem(k);
-
- if(s)return JSON.parse(s);
-
- let r=await fetch(
-  'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+
-  encodeURIComponent(a+' 대한민국')
- );
-
- let j=await r.json();
-
- if(!j.length)throw Error('좌표 없음');
-
- let p=[+j[0].lat,+j[0].lon];
- localStorage.setItem(k,JSON.stringify(p));
- return p;
+function geocodeAddress(address){
+ return new Promise((resolve,reject)=>{
+  if(!window.kakao||!kakao.maps.services){reject(Error('카카오 주소 검색 서비스를 사용할 수 없습니다.'));return;}
+  const geocoder=new kakao.maps.services.Geocoder();
+  geocoder.addressSearch(address,(result,status)=>{
+   if(status===kakao.maps.services.Status.OK&&result.length){
+    resolve(new kakao.maps.LatLng(Number(result[0].y),Number(result[0].x)));
+   }else reject(Error('주소 검색 결과 없음'));
+  });
+ });
 }
 
 async function renderDataset(){
  if(!map)initMap();
-
- markerLayer.clearLayers();
-
+ if(!map)return;
+ markerLayer.forEach(m=>m.setMap(null));
+ markerLayer=[];
  let p=$('dProvince').value;
  let d=$('dDistrict').value.trim();
  let t=$('dType').value;
-
  let found=FACILITIES.filter(x=>
   (!p||x.province===p)&&
   (!d||x.district.includes(d))&&
   (!t||x.type===t)
  );
-
  $('datasetList').innerHTML=
   `<p class="muted">검색 결과 ${fmt(found.length)}개 · 지도 최대 20개 표시</p>`;
-
  found.slice(0,100).forEach(x=>{
   let e=document.createElement('div');
   e.style.padding='7px';
@@ -981,25 +975,29 @@ async function renderDataset(){
   `;
   $('datasetList').append(e);
  });
-
+ const bounds=new kakao.maps.LatLngBounds();
  let count=0;
-
- for(let x of found.filter(x=>x.address).slice(0,20)){
+ for(const x of found.filter(x=>x.address).slice(0,20)){
   try{
-   let pt=await geocode(x.address);
-   L.marker(pt).addTo(markerLayer).bindPopup(
-    `<b>${esc(x.name)}</b><br>${esc(x.type)}<br>${esc(x.address)}`
-   );
+   const position=await geocodeAddress(x.address);
+   const marker=new kakao.maps.Marker({map,position});
+   const info=new kakao.maps.InfoWindow({
+    content:`<div style="padding:9px 12px;min-width:150px;color:#302720">
+     <b>${esc(x.name)}</b><br>
+     <span>${esc(x.type)}</span><br>
+     <small>${esc(x.address)}</small>
+    </div>`
+   });
+   kakao.maps.event.addListener(marker,'click',()=>info.open(map,marker));
+   markerLayer.push(marker);
+   bounds.extend(position);
    count++;
   }catch(e){}
  }
-
- if(count)map.fitBounds(markerLayer.getBounds().pad(.15));
-
+ if(count)map.setBounds(bounds);
  $('mapMsg').textContent=
-  `검색 ${fmt(found.length)}개 중 지도 표시 ${count}개. 주소 누락 또는 좌표 검색 제한으로 일부가 표시되지 않을 수 있습니다.`;
+  `검색 ${fmt(found.length)}개 중 지도 표시 ${count}개. 주소 누락 또는 카카오 주소 검색 결과가 없는 시설은 표시되지 않을 수 있습니다.`;
 }
-
 (async()=>{
  try{
   await openDB();
