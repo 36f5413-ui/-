@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>컬처링크 | 문화공간 프로젝트 커뮤니티</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--navy:#152b4d;--blue:#315bd6;--bg:#f4f6fa;--line:#e1e6ef;--muted:#68758a;--ink:#1d2939}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Malgun Gothic",sans-serif}
+header{background:linear-gradient(120deg,#142747,#315bd6);color:white;padding:24px max(20px,calc((100vw - 1200px)/2))}
+header h1{margin:8px 0;font-size:clamp(25px,4vw,36px)}
+header p{margin:0;color:#e4eaff}
+.brand{font-size:12px;letter-spacing:2px;font-weight:800;color:#cbd8ff}
+nav,.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+nav button{background:#ffffff20;color:white;border:1px solid #ffffff55}
+main{max-width:1200px;margin:22px auto;padding:0 16px}
+.view{display:none}
+.view.active{display:block}
+.card{background:white;border:1px solid var(--line);border-radius:15px;padding:19px;margin-bottom:16px;box-shadow:0 5px 20px #152b4d08}
+h2{font-size:19px;color:var(--navy);margin:0 0 12px}
+h3{font-size:16px;color:var(--navy);margin:0 0 8px}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;background:white;color:var(--ink)}
+textarea{resize:vertical}
+button{border:0;border-radius:9px;background:var(--blue);color:white;font-weight:750;padding:10px 14px;cursor:pointer}
+button.secondary{background:#eaf0ff;color:#2449a8}
+button.ghost{background:#eef1f6;color:#344054}
+button:disabled{opacity:.55}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.toolbar{display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr;gap:9px}
+.help,.muted{font-size:13px;color:var(--muted)}
+.notice{background:#fff8e8;color:#79520b;padding:12px;border-radius:10px;font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{background:#f1f5ff;padding:12px;border-radius:11px}
+.stat b{display:block;font-size:23px;color:var(--navy)}
+.project,.person{border:1px solid var(--line);border-radius:12px;padding:15px;margin:10px 0}
+.project h3{font-size:18px}
+.meta{font-size:12px;color:var(--muted);margin:7px 0}
+.pill{display:inline-block;background:#edf2ff;color:#294ca9;border-radius:99px;padding:4px 9px;font-size:11px;font-weight:750;margin-right:4px}
+.project p{white-space:pre-wrap;line-height:1.6}
+.empty{text-align:center;background:#fafbfc;padding:24px;border-radius:10px;color:var(--muted)}
+.contact{background:#f6f8fc;padding:12px;border-radius:10px;margin-top:10px;font-size:13px}
+.contact a{color:#2454c4;overflow-wrap:anywhere}
+.request{border:1px solid #d9e3ff;background:#f8faff;padding:12px;border-radius:10px;margin:9px 0}
+.comment{border-top:1px solid var(--line);padding:12px 0}
+.comment small{color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+#map{height:360px;border-radius:12px}
+.maprow{display:grid;grid-template-columns:1.3fr 1fr;gap:12px}
+.tablewrap{max-height:350px;overflow:auto}
+footer{max-width:1200px;margin:auto;padding:10px 16px 30px;color:var(--muted);font-size:12px}
+@media(max-width:760px){.toolbar,.grid3,.stats{grid-template-columns:1fr 1fr}.maprow{grid-template-columns:1fr}}
+@media(max-width:520px){.grid,.grid3,.toolbar,.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+<div class="brand">CULTURELINK · CULTURAL SPACE NETWORK</div>
+<h1>지역의 문화공간을 연결하다</h1>
+<p>문화공간 기획자와 투자자·공공기관을 연결하는 프로젝트 커뮤니티</p>
+<nav>
+<button onclick="showView('community')">프로젝트 커뮤니티</button>
+<button onclick="showView('write')">기획서 등록</button>
+<button onclick="showView('investor')">투자자 등록</button>
+<button onclick="showView('contacts')">투자자 연락함</button>
+<button onclick="showView('directory')">투자자 목록</button>
+<button onclick="showView('mapview')">지역·시설 데이터</button>
+<button onclick="showView('guide')">서비스 안내</button>
+</nav>
+</header>
+
+<main>
+
+<section id="community" class="view active">
+<div class="card">
+<h2>프로젝트 커뮤니티</h2>
+<p class="help">등록된 문화공간 조성 제안서를 확인하고 공개 의견 또는 비공개 연락을 요청할 수 있습니다.</p>
+<div class="toolbar">
+<div><label>시·도</label><select id="fRegion"></select></div>
+<div><label>시설 유형</label><select id="fType"></select></div>
+<div><label>진행 단계</label>
+<select id="fStatus">
+<option value="">전체 단계</option>
+<option>아이디어</option>
+<option>기획 검토</option>
+<option>투자·협력 모집</option>
+<option>협의 진행</option>
+</select>
+</div>
+<div><label>검색어</label><input id="fKeyword" placeholder="프로젝트명·지역·내용"></div>
+</div>
+<div class="actions">
+<button onclick="renderProjects()">검색</button>
+<button class="secondary" onclick="resetFilters()">초기화</button>
+<button onclick="showView('write')">+ 기획서 등록</button>
+</div>
+</div>
+
+<div class="stats">
+<div class="stat"><small>프로젝트</small><b id="projectCount">0</b></div>
+<div class="stat"><small>등록 투자자</small><b id="investorCount">0</b></div>
+<div class="stat"><small>공개 의견</small><b id="commentCount">0</b></div>
+<div class="stat"><small>비공개 연락 요청</small><b id="requestCount">0</b></div>
+</div>
+<div class="card"><div id="projectList"></div></div>
+</section>
+
+<section id="write" class="view">
+<div class="card">
+<h2>문화공간 프로젝트 기획서 등록</h2>
+<p class="help">아래 항목을 작성하면 커뮤니티에 게시됩니다. 시·도는 목록에서 선택해야 합니다.</p>
+
+<div class="grid">
+<div><label>프로젝트명 *</label><input id="pTitle" maxlength="100" placeholder="예: 지역 청년 문화복합공간 조성"></div>
+<div><label>문화시설 유형 *</label><select id="pKind"></select></div>
+<div><label>시·도 *</label><select id="pProvince"></select></div>
+<div><label>시·군·구 *</label><input id="pDistrict" placeholder="예: 마포구 / 수원시 영통구"></div>
+<div><label>진행 단계</label>
+<select id="pStatus">
+<option>아이디어</option>
+<option>기획 검토</option>
+<option>투자·협력 모집</option>
+<option>협의 진행</option>
+</select>
+</div>
+<div><label>예상 사업 규모(선택)</label><input id="pBudget" placeholder="예: 3억 원 / 미정"></div>
+</div>
+
+<p><label>기획 개요 *</label>
+<textarea id="pSummary" rows="6" maxlength="5000" placeholder="조성 목적, 이용 대상, 주요 프로그램, 지역 선정 이유, 필요한 협력 등을 작성하세요."></textarea>
+</p>
+
+<div class="grid">
+<div>
+<label>기획서 파일(선택)</label>
+<input id="pFile" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.hwp,.hwpx,.txt">
+<p class="help">최대 10MB. 시연용 예시 게시물에는 실제 파일 대신 예시 기획 내용이 표시됩니다.</p>
+</div>
+<div><label>대표 이미지(선택)</label><input id="pImage" type="file" accept="image/*"></div>
+</div>
+
+<hr>
+<h3>기획자 연락 창구</h3>
+<div class="notice">연락처 공개 여부는 기본적으로 비공개입니다. 실제 개인 연락처보다 프로젝트 전용 이메일을 사용하세요.</div>
+
+<div class="grid" style="margin-top:12px">
+<div><label>기획자·단체명 *</label><input id="pOrg"></div>
+<div><label>담당자명(선택)</label><input id="pPerson"></div>
+<div><label>이메일 *</label><input id="pEmail" type="email"></div>
+<div><label>전화번호(선택)</label><input id="pPhone" type="tel"></div>
+<div><label>선호 연락 방식</label>
+<select id="pContact"><option>이메일</option><option>전화</option><option>이메일 또는 전화</option></select>
+</div>
+<div><label>연락처 공개 설정</label>
+<select id="pVisibility">
+<option value="private">비공개(기본값)</option>
+<option value="public">프로젝트 상세에서 공개</option>
+</select>
+</div>
+</div>
+
+<label style="display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-weight:500">
+<input id="pAgree" type="checkbox" style="width:auto">
+저장 및 공개 범위 안내를 확인했습니다.
+</label>
+<div class="actions">
+<button id="submitProject">프로젝트 게시</button>
+<button class="ghost" onclick="showView('community')">취소</button>
+</div>
+<p id="writeStatus" class="help"></p>
+</div>
+</section>
+
+<section id="investor" class="view">
+<div class="card">
+<h2>투자자·협력기관 등록</h2>
+<p class="help">투자자, 공공기관, 재단, 기업 등 프로젝트에 협력할 수 있는 기관이 소속과 연락 창구를 등록합니다.</p>
+
+<div class="grid">
+<div><label>기관·회사·단체명 *</label><input id="iOrg" placeholder="예: 가온문화투자 주식회사"></div>
+<div><label>기관 유형 *</label>
+<select id="iType">
+<option>투자기관</option>
+<option>공공기관</option>
+<option>지방자치단체</option>
+<option>문화재단</option>
+<option>기업</option>
+<option>비영리단체</option>
+<option>기타 협력기관</option>
+</select>
+</div>
+<div><label>담당자명 *</label><input id="iPerson"></div>
+<div><label>직책(선택)</label><input id="iRole" placeholder="예: 사업개발 담당"></div>
+<div><label>업무용 이메일 *</label><input id="iEmail" type="email"></div>
+<div><label>업무용 전화번호(선택)</label><input id="iPhone" type="tel"></div>
+<div><label>홈페이지(선택)</label><input id="iWebsite" placeholder="https://"></div>
+<div><label>관심 분야</label>
+<select id="iInterest">
+<option>문화공간 조성 전반</option>
+<option>도서관·교육문화</option>
+<option>박물관·미술관·전시</option>
+<option>공연·생활문화</option>
+<option>지역문화·도시재생</option>
+<option>기타</option>
+</select>
+</div>
+</div>
+
+<p><label>기관 소개 및 협력 가능 분야</label>
+<textarea id="iIntro" rows="4" placeholder="투자·공간 제공·운영 협력·공공 지원 등"></textarea>
+</p>
+
+<label style="display:flex;gap:8px;align-items:flex-start;font-weight:500">
+<input id="iAgree" type="checkbox" style="width:auto">
+등록 정보가 투자자 목록에 표시될 수 있음을 확인했습니다.
+</label>
+<div class="actions"><button id="submitInvestor">투자자 등록</button></div>
+<p id="investorStatus" class="help"></p>
+</div>
+</section>
+
+<section id="contacts" class="view">
+<div class="card">
+<h2>투자자 연락함</h2>
+<p class="help">프로젝트에 비공개 연락을 요청한 투자자·기관의 소속, 담당자, 연락 창구를 모아 확인하는 화면입니다. 실제 서비스에서는 기획자 계정으로 로그인한 사용자만 볼 수 있도록 해야 합니다.</p>
+<div id="contactInbox"></div>
+</div>
+</section>
+
+<section id="directory" class="view">
+<div class="card">
+<h2>등록 투자자·협력기관 목록</h2>
+<p class="help">등록된 기관의 소속, 관심 분야 및 공개 연락 창구를 확인할 수 있습니다.</p>
+<div id="investorList"></div>
+</div>
+</section>
+
+<section id="mapview" class="view">
+<div class="card">
+<h2>지역 문화기반시설 데이터</h2>
+<p class="help">사용자가 제공한 2025 전국 문화기반시설 총람 원본 엑셀을 불러옵니다.</p>
+<label>원본 엑셀 파일</label>
+<input id="workbookFile" type="file" accept=".xlsx,.xls">
+<div class="actions"><button onclick="loadWorkbook()">엑셀 불러오기</button></div>
+<p id="excelStatus" class="help">파일을 선택해 주세요.</p>
+<div class="grid3">
+<div><label>시·도</label><select id="dProvince"></select></div>
+<div><label>시·군·구</label><input id="dDistrict"></div>
+<div><label>시설 유형</label><select id="dType"></select></div>
+</div>
+<div class="actions">
+<button onclick="renderDataset()">시설 검색</button>
+<button class="secondary" onclick="showView('write')">이 지역에 기획서 등록</button>
+</div>
+<div class="maprow" style="margin-top:14px">
+<div id="map"></div>
+<div><h3>검색 시설</h3>
+<div id="datasetList" class="tablewrap"><div class="empty">엑셀 자료를 불러오세요.</div></div>
+</div>
+</div>
+<p id="mapMsg" class="help"></p>
+</div>
+</section>
+
+<section id="guide" class="view">
+<div class="card">
+<h2>서비스 이용 안내</h2>
+<h3>기획자</h3>
+<p>문화공간 조성 제안서를 등록하고 투자자·협력기관의 공개 의견과 비공개 연락 요청을 확인합니다.</p>
+<h3>투자자·협력기관</h3>
+<p>기관 등록 후 프로젝트에 공개 의견을 남기거나 기획자에게 비공개 연락을 요청할 수 있습니다.</p>
+<h3>예시 게시물</h3>
+<p>처음 접속하면 가상의 문화공간 조성 프로젝트 1건과 가상의 투자기관 1곳, 비공개 연락 요청 예시가 자동 등록됩니다. 실제 기관이나 실제 연락처가 아닙니다.</p>
+<div class="notice">
+<b>중요:</b> 이 버전은 서버 없는 브라우저 시연용입니다. 게시물·투자자·연락 요청은 현재 기기의 브라우저 IndexedDB에 저장됩니다. 다른 이용자와 실시간 공유되지 않으며, 비공개 요청도 실제 보안이 보장되는 비밀 메시지가 아닙니다. 실제 서비스에는 로그인, 서버 DB, 파일 저장소, 역할별 접근권한, 암호화, 신고·관리 기능이 필요합니다. 테스트에는 가상 연락처만 사용하세요.
+</div>
+</div>
+</section>
+
+</main>
+
+<footer>컬처링크 프로토타입 · 시설 데이터: 2025 전국 문화기반시설 총람(사용자 제공 원본) · 지도: OpenStreetMap</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const DB_NAME='CultureLinkV3',DB_VERSION=1;
+let db,FACILITIES=[],map,markerLayer;
+
+const PROVINCES=[
+'서울특별시','부산광역시','대구광역시','인천광역시',
+'광주광역시','대전광역시','울산광역시','세종특별자치시',
+'경기도','강원특별자치도','충청북도','충청남도',
+'전북특별자치도','전라남도','경상북도','경상남도',
+'제주특별자치도'
+];
+
+const KINDS=[
+'공공도서관','박물관','미술관','생활문화센터',
+'문예회관·공연장','지방문화원·문화의집','문학관',
+'지역문화재단 협력사업','복합문화공간',
+'전시·체험공간','기타 문화시설'
+];
+
+function options(id,arr,first){
+ $(id).innerHTML='';
+ let o=document.createElement('option');
+ o.value='';
+ o.textContent=first;
+ $(id).append(o);
+ arr.forEach(v=>{
+  let x=document.createElement('option');
+  x.value=v;
+  x.textContent=v;
+  $(id).append(x);
+ });
+}
+
+['fRegion','pProvince','dProvince'].forEach(id=>
+ options(id,PROVINCES,
+ id==='fRegion'?'전체 시·도':
+ id==='dProvince'?'전체 시·도':'시·도 선택')
+);
+
+['fType','pKind'].forEach(id=>
+ options(id,KINDS,id==='fType'?'전체 시설 유형':'시설 유형 선택')
+);
+
+options('dType',[],'전체 시설 유형');
+
+function showView(id){
+ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+ $(id).classList.add('active');
+ if(id==='community')renderProjects();
+ if(id==='contacts')renderInbox();
+ if(id==='directory')renderInvestors();
+ if(id==='mapview'){
+  if(!map)initMap();
+  setTimeout(()=>map.invalidateSize(),100);
+ }
+}
+
+function openDB(){
+ return new Promise((res,rej)=>{
+  let r=indexedDB.open(DB_NAME,DB_VERSION);
+  r.onupgradeneeded=()=>{
+   let d=r.result;
+   ['projects','investors','requests'].forEach(n=>{
+    if(!d.objectStoreNames.contains(n))
+     d.createObjectStore(n,{keyPath:'id'});
+   });
+  };
+  r.onsuccess=()=>{db=r.result;res();};
+  r.onerror=()=>rej(r.error);
+ });
+}
+
+function all(name){
+ return new Promise((res,rej)=>{
+  let r=db.transaction(name).objectStore(name).getAll();
+  r.onsuccess=()=>res(r.result||[]);
+  r.onerror=()=>rej(r.error);
+ });
+}
+
+function save(name,obj){
+ return new Promise((res,rej)=>{
+  let t=db.transaction(name,'readwrite');
+  t.objectStore(name).put(obj);
+  t.oncomplete=()=>res();
+  t.onerror=()=>rej(t.error);
+ });
+}
+
+function esc(s){
+ return String(s??'').replace(/[&<>"']/g,c=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ }[c]));
+}
+
+function fmt(n){
+ return Number(n||0).toLocaleString('ko-KR');
+}
+
+function toData(file){
+ return new Promise((res,rej)=>{
+  if(!file)return res(null);
+  if(file.size>10*1024*1024)
+   return rej(Error('첨부파일은 10MB 이하만 가능합니다.'));
+  let r=new FileReader();
+  r.onload=()=>res({
+   name:file.name,type:file.type,size:file.size,data:r.result
+  });
+  r.onerror=()=>rej(r.error);
+  r.readAsDataURL(file);
+ });
+}
+
+async function seed(){
+ let ps=await all('projects');
+ let is=await all('investors');
+ let rs=await all('requests');
+
+ if(ps.length||is.length||rs.length)return;
+
+ const investor={
+  id:'demo-investor-1',
+  org:'가온문화협력연구소(예시)',
+  type:'투자기관',
+  person:'김하늘(가상 담당자)',
+  role:'문화사업 협력 담당(예시)',
+  email:'contact@example.org',
+  phone:'02-0000-0000',
+  website:'https://example.org',
+  interest:'지역문화·도시재생',
+  intro:'지역 생활문화시설의 조성 및 운영 협력 가능성을 검토하는 가상의 기관입니다. 실제 기관이 아닙니다.',
+  demo:true,
+  createdAt:new Date().toISOString()
+ };
+
+ const project={
+  id:'demo-project-1',
+  title:'마포 청년 생활문화 공유센터 조성(예시)',
+  kind:'생활문화센터',
+  province:'서울특별시',
+  district:'마포구',
+  status:'투자·협력 모집',
+  budget:'약 3억 원(가상 추정)',
+  summary:`[시연용 가상 기획서]
+
+1. 추진 배경
+마포구 내 청년과 지역 주민이 일상적으로 모여 문화 활동을 할 수 있는 생활문화 거점 조성을 제안합니다.
+
+2. 조성 목적
+지역 내 유휴 상업공간 또는 공공 유휴공간을 활용해 소규모 전시, 독립출판 워크숍, 주민 모임, 청년 문화기획 프로그램을 운영합니다.
+
+3. 주요 공간 구성
+- 다목적 커뮤니티룸
+- 소규모 전시·발표 공간
+- 독립출판 및 창작 워크숍 공간
+- 지역 문화단체 협업 공간
+
+4. 협력 요청
+공간 조성비 일부 투자, 유휴공간 제공, 운영 프로그램 공동기획, 지역 문화단체 연계 등을 제안합니다.
+
+5. 기대 효과
+지역 주민의 문화 접근성 향상, 청년 기획자 활동 기반 확대, 지역 상권 및 문화단체와의 협력 네트워크 형성을 기대합니다.
+
+※ 실제 사업계획서가 아닌 화면 구성 설명용 예시입니다.`,
+  org:'마포문화기획팀(예시)',
+  person:'이서윤(가상 기획자)',
+  email:'planner@example.org',
+  phone:'02-1111-2222',
+  contact:'이메일',
+  visibility:'private',
+  attachment:null,
+  image:null,
+  comments:[{
+   id:'demo-comment',
+   author:'가온문화협력연구소(예시)',
+   text:'지역 내 유휴공간 확보 가능성과 연간 운영비 산출 자료를 추가로 확인하고 싶습니다.',
+   date:new Date().toISOString(),
+   demo:true
+  }],
+  createdAt:new Date().toISOString(),
+  demo:true
+ };
+
+ await save('investors',investor);
+ await save('projects',project);
+
+ await save('requests',{
+  id:'demo-request-1',
+  projectId:project.id,
+  investorId:investor.id,
+  investorOrg:investor.org,
+  investorType:investor.type,
+  person:investor.person,
+  role:investor.role,
+  email:investor.email,
+  phone:investor.phone,
+  message:'운영비와 공간 확보 방안을 더 자세히 논의하고 싶습니다. 담당자 간 비공개 연락을 요청합니다.',
+  date:new Date().toISOString(),
+  status:'미확인',
+  demo:true
+ });
+}
+
+$('submitProject').onclick=async()=>{
+ let title=$('pTitle').value.trim();
+ let kind=$('pKind').value;
+ let province=$('pProvince').value;
+ let district=$('pDistrict').value.trim();
+ let summary=$('pSummary').value.trim();
+ let org=$('pOrg').value.trim();
+ let email=$('pEmail').value.trim();
+
+ if(!title||!kind||!province||!district||!summary||!org||!email||!$('pAgree').checked){
+  $('writeStatus').textContent='별표(*) 항목과 저장 동의를 확인해 주세요.';
+  return;
+ }
+
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+  $('writeStatus').textContent='이메일 형식을 확인해 주세요.';
+  return;
+ }
+
+ try{
+  let attachment=await toData($('pFile').files[0]);
+  let image=await toData($('pImage').files[0]);
+
+  await save('projects',{
+   id:crypto.randomUUID(),
+   title,kind,province,district,
+   status:$('pStatus').value,
+   budget:$('pBudget').value.trim(),
+   summary,org,
+   person:$('pPerson').value.trim(),
+   email,
+   phone:$('pPhone').value.trim(),
+   contact:$('pContact').value,
+   visibility:$('pVisibility').value,
+   attachment,image,
+   comments:[],
+   createdAt:new Date().toISOString()
+  });
+
+  $('writeStatus').textContent='프로젝트가 게시되었습니다.';
+
+  ['pTitle','pDistrict','pBudget','pSummary','pOrg','pPerson','pEmail','pPhone','pFile','pImage'].forEach(x=>$(x).value='');
+  $('pKind').value='';
+  $('pProvince').value='';
+  $('pAgree').checked=false;
+
+  showView('community');
+ }catch(e){
+  $('writeStatus').textContent='저장 실패: '+e.message;
+ }
+};
+
+$('submitInvestor').onclick=async()=>{
+ let org=$('iOrg').value.trim();
+ let person=$('iPerson').value.trim();
+ let email=$('iEmail').value.trim();
+
+ if(!org||!person||!email||!$('iAgree').checked){
+  $('investorStatus').textContent='기관명, 담당자, 이메일 및 공개 동의를 입력해 주세요.';
+  return;
+ }
+
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+  $('investorStatus').textContent='이메일 형식을 확인해 주세요.';
+  return;
+ }
+
+ await save('investors',{
+  id:crypto.randomUUID(),
+  org,
+  type:$('iType').value,
+  person,
+  role:$('iRole').value.trim(),
+  email,
+  phone:$('iPhone').value.trim(),
+  website:$('iWebsite').value.trim(),
+  interest:$('iInterest').value,
+  intro:$('iIntro').value.trim(),
+  createdAt:new Date().toISOString()
+ });
+
+ $('investorStatus').textContent='투자자 등록이 완료되었습니다. 투자자 목록에서 확인할 수 있습니다.';
+ ['iOrg','iPerson','iRole','iEmail','iPhone','iWebsite','iIntro'].forEach(x=>$(x).value='');
+ $('iAgree').checked=false;
+ renderInvestors();
+};
+
+async function renderProjects(){
+ let ps=(await all('projects')).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+ let is=await all('investors');
+ let rs=await all('requests');
+
+ $('projectCount').textContent=fmt(ps.length);
+ $('investorCount').textContent=fmt(is.length);
+ $('commentCount').textContent=fmt(ps.reduce((n,p)=>n+(p.comments||[]).length,0));
+ $('requestCount').textContent=fmt(rs.length);
+
+ let region=$('fRegion').value;
+ let kind=$('fType').value;
+ let status=$('fStatus').value;
+ let q=$('fKeyword').value.trim().toLowerCase();
+
+ ps=ps.filter(p=>
+  (!region||p.province===region)&&
+  (!kind||p.kind===kind)&&
+  (!status||p.status===status)&&
+  (!q||[p.title,p.summary,p.district,p.org].join(' ').toLowerCase().includes(q))
+ );
+
+ let box=$('projectList');
+ box.innerHTML='';
+
+ if(!ps.length){
+  box.innerHTML='<div class="empty">조건에 맞는 프로젝트가 없습니다.</div>';
+  return;
+ }
+
+ ps.forEach(p=>{
+  let d=document.createElement('article');
+  d.className='project';
+
+  d.innerHTML=`
+   ${p.demo?'<span class="pill">시연용 예시</span>':''}
+   <span class="pill">${esc(p.kind)}</span>
+   <span class="pill">${esc(p.status)}</span>
+   <h3>${esc(p.title)}</h3>
+   <div class="meta">${esc(p.province)} ${esc(p.district)} · ${esc(p.org)} · ${new Date(p.createdAt).toLocaleDateString('ko-KR')}</div>
+   <p>${esc(p.summary.slice(0,230))}${p.summary.length>230?'…':''}</p>
+   <div class="project-foot">
+    <span class="muted">공개 의견 ${(p.comments||[]).length}개</span>
+    <button onclick="openProject('${p.id}')">상세 보기·의견 남기기</button>
+   </div>
+  `;
+
+  box.append(d);
+ });
+}
+
+async function openProject(id){
+ let p=(await all('projects')).find(x=>x.id===id);
+ if(!p)return;
+
+ let investors=await all('investors');
+
+ let comments=(p.comments||[]).map(c=>`
+  <div class="comment">
+   <b>${esc(c.author)}</b>
+   ${c.demo?'<span class="pill">예시</span>':''}
+   <small>${new Date(c.date).toLocaleString('ko-KR')}</small>
+   <p>${esc(c.text)}</p>
+  </div>
+ `).join('')||'<p class="muted">등록된 공개 의견이 없습니다.</p>';
+
+ let file=p.attachment?
+  `<a href="${p.attachment.data}" download="${esc(p.attachment.name)}">기획서 다운로드: ${esc(p.attachment.name)}</a>`:
+  '<span class="muted">별도 첨부 파일 없음(예시 기획 내용은 위 개요에 포함)</span>';
+
+ let win=window.open('','_blank');
+
+ if(!win){
+  alert('팝업 차단을 해제한 뒤 다시 시도해 주세요.');
+  return;
+ }
+
+ win.document.write(`<!doctype html>
+ <html lang="ko">
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width">
+ <title>${esc(p.title)}</title>
+ <style>
+ body{font-family:system-ui;max-width:850px;margin:28px auto;padding:0 16px;color:#1d2939}
+ h1{color:#152b4d}
+ .box{background:#f5f7fb;padding:16px;border-radius:12px;margin:14px 0}
+ input,textarea,select{width:100%;padding:10px;margin:6px 0 12px;box-sizing:border-box;border:1px solid #ccd;border-radius:8px}
+ button{padding:10px 14px;background:#315bd6;color:white;border:0;border-radius:8px;cursor:pointer}
+ .contact{background:#f6f8fc;padding:12px;border-radius:10px}
+ .comment{border-top:1px solid #ddd;padding:12px 0}
+ .muted{color:#667}
+ small{color:#667}
+ a{color:#2454c4}
+ .notice{background:#fff8e8;padding:10px;border-radius:8px;font-size:13px}
+ </style>
+
+ <p>${esc(p.province)} ${esc(p.district)} · ${esc(p.kind)} · ${esc(p.status)} ${p.demo?'· 시연용 예시':''}</p>
+ <h1>${esc(p.title)}</h1>
+ <p>${esc(p.org)} · ${new Date(p.createdAt).toLocaleDateString('ko-KR')}</p>
+
+ <div class="box">
+  <h3>기획 개요</h3>
+  <p style="white-space:pre-wrap;line-height:1.6">${esc(p.summary)}</p>
+  <p>예상 사업 규모: ${esc(p.budget||'미기재')}</p>
+  ${file}
+ </div>
+
+ ${p.visibility==='public'?
+ `<div class="contact"><b>기획자 연락처</b><br>${esc(p.email)} · ${esc(p.phone||'전화 미등록')}</div>`:
+ '<div class="notice">기획자 연락처는 비공개입니다. 투자자 등록 후 비공개 연락 요청을 보낼 수 있습니다.</div>'}
+
+ <h2>공개 의견</h2>
+ ${comments}
+
+ <label>작성자·기관명</label>
+ <input id="cAuthor" placeholder="기관명 또는 소속">
+ <label>공개 의견</label>
+ <textarea id="cText" rows="4" placeholder="프로젝트에 대한 검토 의견"></textarea>
+ <button id="sendComment">공개 의견 등록</button>
+
+ <hr>
+ <h2>기획자에게 비공개 연락 요청</h2>
+ <p class="notice">아래 요청은 공개 댓글에 표시되지 않고, 이 시연용 브라우저의 투자자 연락함에 별도로 저장됩니다. 실제 서비스에서는 기획자 계정만 열람하도록 서버 권한을 설정해야 합니다.</p>
+
+ <label>등록 투자자·기관 선택</label>
+ <select id="investorSelect">
+  <option value="">등록 기관 선택</option>
+  ${investors.map(i=>`<option value="${i.id}">${esc(i.org)} · ${esc(i.type)}</option>`).join('')}
+ </select>
+
+ <label>비공개 연락 요청 내용</label>
+ <textarea id="privateMessage" rows="3" placeholder="예: 운영비 및 공간 확보 방안을 별도로 논의하고 싶습니다."></textarea>
+ <button id="sendRequest">비공개 연락 요청 보내기</button>
+ <p id="feedback" class="muted"></p>
+ </html>`);
+
+ win.document.close();
+
+ win.document.getElementById('sendComment').onclick=async()=>{
+  let author=win.document.getElementById('cAuthor').value.trim();
+  let text=win.document.getElementById('cText').value.trim();
+
+  if(!author||!text){
+   win.alert('작성자와 의견을 입력해 주세요.');
+   return;
+  }
+
+  p.comments=p.comments||[];
+  p.comments.push({
+   id:crypto.randomUUID(),
+   author,text,
+   date:new Date().toISOString()
+  });
+
+  await save('projects',p);
+  win.document.getElementById('feedback').textContent='공개 의견이 저장되었습니다.';
+  win.location.reload();
+ };
+
+ win.document.getElementById('sendRequest').onclick=async()=>{
+  let investorId=win.document.getElementById('investorSelect').value;
+  let message=win.document.getElementById('privateMessage').value.trim();
+
+  if(!investorId||!message){
+   win.alert('투자자 등록 후 기관을 선택하고 요청 내용을 작성해 주세요.');
+   return;
+  }
+
+  let inv=investors.find(i=>i.id===investorId);
+
+  await save('requests',{
+   id:crypto.randomUUID(),
+   projectId:p.id,
+   investorId,
+   investorOrg:inv.org,
+   investorType:inv.type,
+   person:inv.person,
+   role:inv.role,
+   email:inv.email,
+   phone:inv.phone,
+   message,
+   date:new Date().toISOString(),
+   status:'미확인'
+  });
+
+  win.document.getElementById('feedback').textContent='비공개 연락 요청이 등록되었습니다. 기획자 연락함에서 확인할 수 있습니다.';
+ };
+}
+
+async function renderInbox(){
+ let rs=(await all('requests')).sort((a,b)=>b.date.localeCompare(a.date));
+ let ps=await all('projects');
+ let box=$('contactInbox');
+ box.innerHTML='';
+
+ if(!rs.length){
+  box.innerHTML='<div class="empty">아직 비공개 연락 요청이 없습니다.</div>';
+  return;
+ }
+
+ rs.forEach(r=>{
+  let p=ps.find(x=>x.id===r.projectId);
+  let d=document.createElement('div');
+  d.className='request';
+
+  d.innerHTML=`
+   ${r.demo?'<span class="pill">시연용 예시</span>':''}
+   <h3>${esc(r.investorOrg)} · ${esc(r.investorType)}</h3>
+   <p class="meta">대상 프로젝트: ${esc(p?p.title:'프로젝트 정보 없음')} · ${new Date(r.date).toLocaleString('ko-KR')}</p>
+   <p>${esc(r.message)}</p>
+   <div class="contact">
+    <b>투자자 연락 창구</b><br>
+    담당자: ${esc(r.person)} ${r.role?'· '+esc(r.role):''}<br>
+    이메일: <a href="mailto:${esc(r.email)}">${esc(r.email)}</a><br>
+    전화: ${r.phone?`<a href="tel:${esc(r.phone)}">${esc(r.phone)}</a>`:'미등록'}
+   </div>
+   <p class="muted">상태: ${esc(r.status)}</p>
+  `;
+
+  box.append(d);
+ });
+}
+
+async function renderInvestors(){
+ let is=(await all('investors')).sort((a,b)=>a.org.localeCompare(b.org,'ko'));
+ let box=$('investorList');
+ box.innerHTML='';
+
+ if(!is.length){
+  box.innerHTML='<div class="empty">등록된 투자자·협력기관이 없습니다.</div>';
+  return;
+ }
+
+ is.forEach(i=>{
+  let d=document.createElement('div');
+  d.className='person';
+
+  d.innerHTML=`
+   ${i.demo?'<span class="pill">시연용 예시</span>':''}
+   <h3>${esc(i.org)}</h3>
+   <p class="meta">${esc(i.type)} · 관심 분야: ${esc(i.interest)}</p>
+   <p>${esc(i.intro||'기관 소개가 등록되지 않았습니다.')}</p>
+   <div class="contact">
+    담당자: ${esc(i.person)} ${i.role?'· '+esc(i.role):''}<br>
+    이메일: <a href="mailto:${esc(i.email)}">${esc(i.email)}</a><br>
+    전화: ${i.phone?esc(i.phone):'미등록'}<br>
+    ${i.website?`홈페이지: <a href="${esc(i.website)}" target="_blank" rel="noopener">${esc(i.website)}</a>`:''}
+   </div>
+  `;
+
+  box.append(d);
+ });
+}
+
+function resetFilters(){
+ ['fRegion','fType','fStatus','fKeyword'].forEach(id=>$(id).value='');
+ renderProjects();
+}
+
+function initMap(){
+ map=L.map('map').setView([36.3,127.8],7);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© OpenStreetMap'
+ }).addTo(map);
+ markerLayer=L.layerGroup().addTo(map);
+}
+
+function norm(v){
+ return String(v??'').replace(/\s/g,'').toLowerCase();
+}
+
+function headerIndex(h,terms){
+ return h.findIndex(v=>terms.some(t=>norm(v).includes(norm(t))));
+}
+
+async function loadWorkbook(){
+ let f=$('workbookFile').files[0];
+
+ if(!f){
+  $('excelStatus').textContent='엑셀 파일을 선택해 주세요.';
+  return;
+ }
+
+ $('excelStatus').textContent='읽는 중입니다...';
+
+ try{
+  let wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+  let out=[];
+
+  wb.SheetNames.forEach(sn=>{
+   let rows=XLSX.utils.sheet_to_json(
+    wb.Sheets[sn],
+    {header:1,defval:'',raw:false}
+   );
+
+   let hi=-1,ni=-1,ai=-1,pi=-1,di=-1;
+
+   for(let r=0;r<Math.min(rows.length,20);r++){
+    let h=rows[r].map(String);
+    let n=headerIndex(h,['시설명','도서관명','박물관명','미술관명','문화원명','문학관명','명칭']);
+    let a=headerIndex(h,['주소']);
+
+    if(n>=0&&a>=0){
+     hi=r;
+     ni=n;
+     ai=a;
+     pi=headerIndex(h,['시도']);
+     di=headerIndex(h,['시군구']);
+     break;
+    }
+   }
+
+   if(hi<0)return;
+
+   for(let r=hi+1;r<rows.length;r++){
+    let row=rows[r];
+    let name=String(row[ni]||'').trim();
+
+    if(!name||/합계|소계/.test(name))continue;
+
+    out.push({
+     type:sn.replace(/^\(부록\)/,''),
+     name,
+     province:String(row[pi]||''),
+     district:String(row[di]||''),
+     address:String(row[ai]||'')
+    });
+   }
+  });
+
+  if(!out.length)throw Error('시설명과 주소 열을 찾지 못했습니다.');
+
+  FACILITIES=out;
+
+  options(
+   'dProvince',
+   [...new Set(out.map(x=>x.province).filter(Boolean))].sort(),
+   '전체 시·도'
+  );
+
+  options(
+   'dType',
+   [...new Set(out.map(x=>x.type))].sort(),
+   '전체 시설 유형'
+  );
+
+  $('excelStatus').textContent=`${fmt(out.length)}개 시설을 불러왔습니다.`;
+  renderDataset();
+
+ }catch(e){
+  $('excelStatus').textContent='불러오기 오류: '+e.message;
+ }
+}
+
+async function geocode(a){
+ let k='cl_geo_'+a;
+ let s=localStorage.getItem(k);
+
+ if(s)return JSON.parse(s);
+
+ let r=await fetch(
+  'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+
+  encodeURIComponent(a+' 대한민국')
+ );
+
+ let j=await r.json();
+
+ if(!j.length)throw Error('좌표 없음');
+
+ let p=[+j[0].lat,+j[0].lon];
+ localStorage.setItem(k,JSON.stringify(p));
+ return p;
+}
+
+async function renderDataset(){
+ if(!map)initMap();
+
+ markerLayer.clearLayers();
+
+ let p=$('dProvince').value;
+ let d=$('dDistrict').value.trim();
+ let t=$('dType').value;
+
+ let found=FACILITIES.filter(x=>
+  (!p||x.province===p)&&
+  (!d||x.district.includes(d))&&
+  (!t||x.type===t)
+ );
+
+ $('datasetList').innerHTML=
+  `<p class="muted">검색 결과 ${fmt(found.length)}개 · 지도 최대 20개 표시</p>`;
+
+ found.slice(0,100).forEach(x=>{
+  let e=document.createElement('div');
+  e.style.padding='7px';
+  e.style.borderBottom='1px solid #ddd';
+  e.innerHTML=`
+   <b>${esc(x.name)}</b>
+   <div class="muted">${esc(x.type)} · ${esc(x.province)} ${esc(x.district)}</div>
+   <small>${esc(x.address)}</small>
+  `;
+  $('datasetList').append(e);
+ });
+
+ let count=0;
+
+ for(let x of found.filter(x=>x.address).slice(0,20)){
+  try{
+   let pt=await geocode(x.address);
+   L.marker(pt).addTo(markerLayer).bindPopup(
+    `<b>${esc(x.name)}</b><br>${esc(x.type)}<br>${esc(x.address)}`
+   );
+   count++;
+  }catch(e){}
+ }
+
+ if(count)map.fitBounds(markerLayer.getBounds().pad(.15));
+
+ $('mapMsg').textContent=
+  `검색 ${fmt(found.length)}개 중 지도 표시 ${count}개. 주소 누락 또는 좌표 검색 제한으로 일부가 표시되지 않을 수 있습니다.`;
+}
+
+(async()=>{
+ try{
+  await openDB();
+  await seed();
+  await renderProjects();
+ }catch(e){
+  alert('브라우저 저장소를 열 수 없습니다. Chrome 또는 Edge에서 실행해 주세요. '+e.message);
+ }
+})();
+</script>
+</body>
+</html>
